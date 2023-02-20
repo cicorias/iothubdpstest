@@ -350,7 +350,6 @@ function generate_device_certificate()
                               "${root_ca_dir}" "${root_ca_password}" \
                               "${openssl_root_config_file}"
     cat "${root_ca_dir}/certs/${1}.cert.pem" \
-        "${root_ca_dir}/certs/azure-iot-test-only.intermediate.cert.pem" \
         "${root_ca_dir}/certs/azure-iot-test-only.root.ca.cert.pem" \
         > "${root_ca_dir}/certs/${1}-full-chain.cert.pem"
 }

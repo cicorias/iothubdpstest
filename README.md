@@ -12,11 +12,12 @@ If you haven't used this repo before, I recommend you follow through with the ne
   - [Quickstart: Use Terraform to create an Azure IoT Device Provisioning Service](https://learn.microsoft.com/en-us/azure/iot-dps/quick-setup-auto-provision-terraform?tabs=bash)
   - [Tutorial: Use Microsoft-supplied scripts to create test certificates](https://learn.microsoft.com/en-us/azure/iot-hub/tutorial-x509-scripts)
   - [Tutorial: Provision multiple X.509 devices using enrollment groups](https://learn.microsoft.com/en-us/azure/iot-dps/tutorial-custom-hsm-enrollment-group-x509?tabs=linux&pivots=programming-language-python)
+  - [How to use X.509 certificates over HTTPS without an SDK](https://learn.microsoft.com/en-us/azure/iot-dps/iot-dps-https-x509-support?tabs=linux)
 - The guides above will make use of [these **demo** scripts from Microsoft](https://github.com/Azure/azure-iot-sdk-c/tree/main/tools/CACertificates)
 
 
 ## Prerequisites
-Follow all sections below.
+Follow **all** sections below.
 
 ### Repo
 First clone this repo and go into the repo's root directory to get started.
@@ -53,9 +54,10 @@ Let's create 2 certificates from the intermediate cert for our tests:
 ```sh
 ./certGen.sh create_device_certificate_from_intermediate testdevice1
 ./certGen.sh create_device_certificate_from_intermediate testdevice2
+./certGen.sh create_device_certificate_from_intermediate testdevice3
 ```
 
-You must be wondering, why 2 devices? I don't know, why not 3? Or 1? Do as you wish.
+You must be wondering, why 3 devices? I don't know, why not 4? Or 2? Do as you wish!
 
 ## Setting up Infrastructure
 We need to create all the Azure resources and configuration needed to connect devices. This repo has scripts to set that up for you.
@@ -92,19 +94,47 @@ This repo includes a nice terraform output that exports the environment variable
 $(terraform output -raw environment_variable_setup)
 ```
 
-### Run Simulated Connection
+More specifically, the command above sets the right values for the variables:
+- `PROVISIONING_HOST` which is the hostname for DPS (default is `global.azure-devices-provisioning.net`)
+- `PROVISIONING_IDSCOPE` which is the ID for your IoT Hub DPS Instance
+
+### Provision a Device and Connect Using the Azure IoT SDK for Pythin
 Install python requirements first
 ```sh
 pip3 install -r requirements.txt
 ```
 
-Now simulate our two devices being provisioned and sending 10 messages each:
+Now simulate our device being provisioned and sending 10 messages:
 ```sh
 python3 provision_x509.py testdevice1
-python3 provision_x509.py testdevice2
 ```
 
 You're free to run that command with other device IDs based on the certs that you create. Fun fact: The Python SDK uses MQTT to provision devices.
+
+### Provision a Device Using cURL
+Because you may want to provision a device with plain HTTPS calls, here's an example that uses cURL to call the DPS API directly. Note that you need to have another device created and substitute a value in the second call!
+```sh
+# Make sure env variables are set:
+$(terraform output -raw environment_variable_setup)
+registration_id=testdevice2
+curl -L -i -X PUT --cert certificates/certs/$registration_id-full-chain.cert.pem \
+            --key certificates/private/$registration_id.key.pem \
+            -H 'Content-Type: application/json' \
+            -H 'Content-Encoding:  utf-8' \
+            -d "{'registrationId': '$registration_id'}" \
+            https://$PROVISIONING_HOST/$PROVISIONING_IDSCOPE/registrations/$registration_id/register?api-version=2021-06-01
+
+# Check the operation status now (you need to replace the ID below with yours from the call above)
+curl -L -i -X GET --cert certificates/certs/$registration_id-full-chain.cert.pem \
+            --key certificates/private/$registration_id.key.pem \
+            -H 'Content-Type: application/json' \
+            -H 'Content-Encoding:  utf-8' \
+            https://$PROVISIONING_HOST/$PROVISIONING_IDSCOPE/registrations/$registration_id/operations/[operation_id]?api-version=2021-06-01
+
+```
+### Provision a Device Using MQTT
+[Azure IoT Hub DPS supports plain MQTT](https://learn.microsoft.com/en-us/azure/iot-dps/iot-dps-mqtt-support) to provision devices too.
+**TODO**
 
 ## TL;DR
 All the commands that you need without too much context.
@@ -117,6 +147,7 @@ chmod 700 certGen.sh
 ./certGen.sh create_root_and_intermediate
 ./certGen.sh create_device_certificate_from_intermediate testdevice1
 ./certGen.sh create_device_certificate_from_intermediate testdevice2
+./certGen.sh create_device_certificate_from_intermediate testdevice3
 cd ..
 
 # INFRA
@@ -124,13 +155,29 @@ terraform init -upgrade
 terraform apply -auto-approve
 $(terraform output -raw enrollment_group_create_command)
 
-# DEVICES
-# Optional line commented below to monitor events to the created IoT Hub (use a separate terminal session for this)
-# az iot hub monitor-events --hub-name $(terraform output -raw azurerm_iothub_name) --output json
+# PROVISION DEVICES AND SEND MESSAGES USING AZURE IOT SDK FOR PYTHON
 $(terraform output -raw environment_variable_setup)
 pip3 install -r requirements.txt
 python3 provision_x509.py testdevice1
-python3 provision_x509.py testdevice2
+
+# PROVISION DEVICES USING cURL
+registration_id=testdevice2
+curl -L -i -X PUT --cert certificates/certs/$registration_id-full-chain.cert.pem \
+            --key certificates/private/$registration_id.key.pem \
+            -H 'Content-Type: application/json' \
+            -H 'Content-Encoding:  utf-8' \
+            -d "{'registrationId': '$registration_id'}" \
+            https://$PROVISIONING_HOST/$PROVISIONING_IDSCOPE/registrations/$registration_id/register?api-version=2021-06-01
+
+# Check the operation status now (you need to replace the ID below with yours from the call above)
+curl -L -i -X GET --cert certificates/certs/$registration_id-full-chain.cert.pem \
+            --key certificates/private/$registration_id.key.pem \
+            -H 'Content-Type: application/json' \
+            -H 'Content-Encoding:  utf-8' \
+            https://$PROVISIONING_HOST/$PROVISIONING_IDSCOPE/registrations/$registration_id/operations/[operation_id]?api-version=2021-06-01
+
+# PROVISION DEVICES WITH MQTT
+# TODO
 ```
 
 Happy IoTying!
