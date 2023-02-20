@@ -1,0 +1,3 @@
+azure-iot-hub
+azure-iothub-provisioningserviceclient >= 1.2.0
+azure-iot-device

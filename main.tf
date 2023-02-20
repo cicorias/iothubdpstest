@@ -163,3 +163,12 @@ resource "azurerm_iothub_dps" "dps" {
     apply_allocation_policy = true
   }
 }
+
+resource "azurerm_iothub_dps_certificate" "root" {
+  name                = "root"
+  resource_group_name = azurerm_resource_group.rg.name
+  iot_dps_name        = azurerm_iothub_dps.dps.name
+  is_verified = true
+
+  certificate_content = filebase64("./certificates/certs/azure-iot-test-only.root.ca.cert.pem")
+}

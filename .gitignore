@@ -28,3 +28,9 @@ override.tf.json
 
 # Include tfplan files to ignore the plan output of command: terraform plan -out=tfplan
 # example: *tfplan*
+
+# Ignore generated cert files
+certificates/**
+!certificates/certGen.sh
+!certificates/openssl_device_intermediate_ca.cnf
+!certificates/openssl_root_ca.cnf
