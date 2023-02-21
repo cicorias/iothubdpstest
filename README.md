@@ -46,13 +46,14 @@ az extension add --name azure-iot
 
 This repo ignores certificate files, keys and other magical constructs you'll need to generate, so go into the [certificates](/certificates/) directory and run the following commands to generate them:
 ```sh
+cd certificates
 chmod 700 certGen.sh
 ./certGen.sh create_root_and_intermediate
 ```
 
 The commands above generate root and intermediate certificates and keys in the same chain. You can also use Microsoft demo scripts to generate leaf (device) certificates and keys. Simply run the same script with the `create_device_certificate_from_intermediate` subcommand and **one argument that provides the device ID**. That part isn't bolded by accident: The device ID must match the Common Name (CN) in the device certificate! The device ID will be used when registering the device to an IoT Hub using DPS.
 
-Let's create 2 certificates from the intermediate cert for our tests:
+Let's create 3 certificates from the intermediate cert for our tests:
 ```sh
 ./certGen.sh create_device_certificate_from_intermediate testdevice1
 ./certGen.sh create_device_certificate_from_intermediate testdevice2
@@ -139,11 +140,13 @@ curl -L -i -X GET --cert certificates/certs/$registration_id-full-chain.cert.pem
 **TODO**
 
 ## TL;DR
-All the commands that you need without too much context.
+All the commands that you need without much context.
 
 ```sh
 az extension add --name azure-iot
-# CERTS
+```
+### Create Certs
+```sh
 cd certificates
 chmod 700 certGen.sh
 ./certGen.sh create_root_and_intermediate
@@ -151,18 +154,22 @@ chmod 700 certGen.sh
 ./certGen.sh create_device_certificate_from_intermediate testdevice2
 ./certGen.sh create_device_certificate_from_intermediate testdevice3
 cd ..
-
-# INFRA
+```
+### Create Infrastructure
+```sh
 terraform init -upgrade
 terraform apply -auto-approve
 $(terraform output -raw enrollment_group_create_command)
+```
 
-# PROVISION DEVICES AND SEND MESSAGES USING AZURE IOT SDK FOR PYTHON
+### PROVISION DEVICES AND SEND MESSAGES USING AZURE IOT SDK FOR PYTHON
+```sh
 $(terraform output -raw environment_variable_setup)
 pip3 install -r requirements.txt
 python3 provision_x509.py testdevice1
-
-# PROVISION DEVICES USING cURL
+```
+### PROVISION DEVICES USING cURL
+```sh
 registration_id=testdevice2
 curl -L -i -X PUT --cert certificates/certs/$registration_id-full-chain.cert.pem \
             --key certificates/private/$registration_id.key.pem \
@@ -177,9 +184,14 @@ curl -L -i -X GET --cert certificates/certs/$registration_id-full-chain.cert.pem
             -H 'Content-Type: application/json' \
             -H 'Content-Encoding:  utf-8' \
             https://$PROVISIONING_HOST/$PROVISIONING_IDSCOPE/registrations/$registration_id/operations/[operation_id]?api-version=2021-06-01
-
-# PROVISION DEVICES WITH MQTT
-# TODO
 ```
+### PROVISION DEVICES WITH MQTT
+**TODO**
 
+
+## Cleanup
+Don't leave stuff running! Simply run the command below and it will all be good. You don't need to remove your certificates from your repo (they're gitignored **and** you can reuse them).
+```sh
+terraform destroy -auto-approve
+```
 Happy IoTying!
