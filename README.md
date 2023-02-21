@@ -5,7 +5,6 @@ Learn how to provision devices with DPS for IoT Hub and testing connectivity.
 If you haven't used this repo before, I recommend you follow through with the next sections; however, if you've been here before and just want the commands to get started, simply fulfill the [prerequisites](#prerequisites) and run the [TL;DR](#tldr).
 
 ## Context and References
-- [Python 3.7](https://www.python.org/) or newer and [pip3](https://pip.pypa.io/en/stable/) in your machine (test with `python3 --version`)
 - [IoT Hub documentation](https://learn.microsoft.com/en-us/azure/iot-hub/)
 - [IoT Hub Device Provisioning Services (DPS) documentation](https://learn.microsoft.com/en-us/azure/iot-dps/)
 - This repo is pretty much a simplification of a few [learn.microsoft.com](https://learn.microsoft.com) guides put together:
@@ -21,6 +20,9 @@ Follow **all** sections below.
 
 ### Repo
 First clone this repo and go into the repo's root directory to get started.
+
+### Python
+You need [Python 3.7](https://www.python.org/) or newer and [pip3](https://pip.pypa.io/en/stable/) in your machine (test with `python3 --version`)
 
 ### OpenSSL
 Make sure that you have [openssl](https://www.openssl.org/) installed. Run `openssl version` to confirm.
