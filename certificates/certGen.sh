@@ -19,6 +19,7 @@ set -o pipefail # Exit if pipe failed
 root_ca_dir="."
 home_dir="."
 algorithm="genrsa"
+genpkey_algorithm="RSA"
 COUNTRY="US"
 STATE="WA"
 LOCALITY="Redmond"
@@ -200,9 +201,9 @@ function generate_device_certificate_common()
     echo "----------------------------------------"
     cd "${home_dir}"
 
-    openssl "${algorithm}" \
+    openssl genpkey -algorithm "${genpkey_algorithm}" \
             -out "${certificate_dir}/private/${device_prefix}.key.pem" \
-            ${key_bits_length}
+            -pkeyopt rsa_keygen_bits:${key_bits_length}
     [ $? -eq 0 ] || exit $?
     chmod 444 "${certificate_dir}/private/${device_prefix}.key.pem"
     [ $? -eq 0 ] || exit $?
@@ -352,6 +353,9 @@ function generate_device_certificate()
     cat "${root_ca_dir}/certs/${1}.cert.pem" \
         "${root_ca_dir}/certs/azure-iot-test-only.root.ca.cert.pem" \
         > "${root_ca_dir}/certs/${1}-full-chain.cert.pem"
+    cat "${root_ca_dir}/certs/${1}-full-chain.cert.pem" \
+        "${root_ca_dir}/private/${1}.key.pem" \
+        > "${root_ca_dir}/private/${1}.store.pem"
 }
 
 
@@ -375,6 +379,9 @@ function generate_device_certificate_from_intermediate()
         "${intermediate_ca_dir}/certs/azure-iot-test-only.intermediate.cert.pem" \
         "${intermediate_ca_dir}/certs/azure-iot-test-only.root.ca.cert.pem" \
         > "${intermediate_ca_dir}/certs/${1}-full-chain.cert.pem"
+    cat "${intermediate_ca_dir}/certs/${1}-full-chain.cert.pem" \
+        "${intermediate_ca_dir}/private/${1}.key.pem" \
+        > "${intermediate_ca_dir}/private/${1}.store.pem"
 }
 
 

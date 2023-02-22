@@ -46,13 +46,14 @@ az extension add --name azure-iot
 
 This repo ignores certificate files, keys and other magical constructs you'll need to generate, so go into the [certificates](/certificates/) directory and run the following commands to generate them:
 ```sh
+cd certificates
 chmod 700 certGen.sh
 ./certGen.sh create_root_and_intermediate
 ```
 
 The commands above generate root and intermediate certificates and keys in the same chain. You can also use Microsoft demo scripts to generate leaf (device) certificates and keys. Simply run the same script with the `create_device_certificate_from_intermediate` subcommand and **one argument that provides the device ID**. That part isn't bolded by accident: The device ID must match the Common Name (CN) in the device certificate! The device ID will be used when registering the device to an IoT Hub using DPS.
 
-Let's create 2 certificates from the intermediate cert for our tests:
+Let's create 3 certificates from the intermediate cert for our tests:
 ```sh
 ./certGen.sh create_device_certificate_from_intermediate testdevice1
 ./certGen.sh create_device_certificate_from_intermediate testdevice2
@@ -74,11 +75,18 @@ terraform apply -auto-approve
 You created a resource group, IoT Hub, DPS instance, and mapped the IoT Hub to your DPS instance. To make things simpler, terraform also [uploaded and verified your generated root certificate automatically](https://learn.microsoft.com/en-us/azure/iot-dps/how-to-verify-certificates#automatic-verification-of-intermediate-or-root-ca-through-self-attestation).
 
 ### Creating an Enrollment Group
-Because Enrollment Groups are part of an IoT Hub DPS extension and not the main ARM APIs, we need to create the enrollment group using az cli instead of terraform (sadness). There are terraform workarounds, but I don't like them. Here's the command that you need to run for the enrollment group creation:
+Because Enrollment Groups are part of an IoT Hub DPS extension and not the main ARM APIs, we need to create the enrollment group using az cli instead of terraform (sadness). There are terraform workarounds, but I don't like them. Below is the command that you need to run for the enrollment group creation.
+
 ```sh
-# The command looks something like the commented one below, but we will grab resource_group_name and dps_name from Terraform, so terraform will give us the command ready to execute as one of its outputs.
-# az iot dps enrollment-group create -g {resource_group_name} --dps-name {dps_name} --enrollment-id x509-test-devices --certificate-path "./certificates/certs/azure-iot-test-only.intermediate.cert.pem"
 $(terraform output -raw enrollment_group_create_command)
+```
+
+**NOTE**: The command looks something like the one below, but terraform does the work of filling in the `resource_group_name` and `dps_name` variables for you.
+```sh
+az iot dps enrollment-group create -g {resource_group_name} \
+    --dps-name {dps_name} \
+    --enrollment-id x509-test-devices \
+    --certificate-path "./certificates/certs/azure-iot-test-only.intermediate.cert.pem"
 ```
 
 ## Provisioning and Testing Devices
@@ -126,12 +134,12 @@ curl -L -i -X PUT --cert certificates/certs/$registration_id-full-chain.cert.pem
             -d "{'registrationId': '$registration_id'}" \
             https://$PROVISIONING_HOST/$PROVISIONING_IDSCOPE/registrations/$registration_id/register?api-version=2021-06-01
 
-# Check the operation status now (you need to replace the ID below with yours from the call above)
+# Check the operation status now (you need to replace the $OPERATION_ID below with yours from the call above)
 curl -L -i -X GET --cert certificates/certs/$registration_id-full-chain.cert.pem \
             --key certificates/private/$registration_id.key.pem \
             -H 'Content-Type: application/json' \
             -H 'Content-Encoding:  utf-8' \
-            https://$PROVISIONING_HOST/$PROVISIONING_IDSCOPE/registrations/$registration_id/operations/[operation_id]?api-version=2021-06-01
+            https://$PROVISIONING_HOST/$PROVISIONING_IDSCOPE/registrations/$registration_id/operations/$OPERATION_ID?api-version=2021-06-01
 
 ```
 ### Provision a Device Using MQTT
@@ -139,11 +147,13 @@ curl -L -i -X GET --cert certificates/certs/$registration_id-full-chain.cert.pem
 **TODO**
 
 ## TL;DR
-All the commands that you need without too much context.
+All the commands that you need without much context.
 
 ```sh
 az extension add --name azure-iot
-# CERTS
+```
+### Create Certs
+```sh
 cd certificates
 chmod 700 certGen.sh
 ./certGen.sh create_root_and_intermediate
@@ -151,18 +161,22 @@ chmod 700 certGen.sh
 ./certGen.sh create_device_certificate_from_intermediate testdevice2
 ./certGen.sh create_device_certificate_from_intermediate testdevice3
 cd ..
-
-# INFRA
+```
+### Create Infrastructure
+```sh
 terraform init -upgrade
 terraform apply -auto-approve
 $(terraform output -raw enrollment_group_create_command)
+```
 
-# PROVISION DEVICES AND SEND MESSAGES USING AZURE IOT SDK FOR PYTHON
+### PROVISION DEVICES AND SEND MESSAGES USING AZURE IOT SDK FOR PYTHON
+```sh
 $(terraform output -raw environment_variable_setup)
 pip3 install -r requirements.txt
 python3 provision_x509.py testdevice1
-
-# PROVISION DEVICES USING cURL
+```
+### PROVISION DEVICES USING cURL
+```sh
 registration_id=testdevice2
 curl -L -i -X PUT --cert certificates/certs/$registration_id-full-chain.cert.pem \
             --key certificates/private/$registration_id.key.pem \
@@ -177,9 +191,14 @@ curl -L -i -X GET --cert certificates/certs/$registration_id-full-chain.cert.pem
             -H 'Content-Type: application/json' \
             -H 'Content-Encoding:  utf-8' \
             https://$PROVISIONING_HOST/$PROVISIONING_IDSCOPE/registrations/$registration_id/operations/[operation_id]?api-version=2021-06-01
-
-# PROVISION DEVICES WITH MQTT
-# TODO
 ```
+### PROVISION DEVICES WITH MQTT
+**TODO**
 
+
+## Cleanup
+Don't leave stuff running! Simply run the command below and it will all be good. You don't need to remove your certificates from your repo (they're gitignored **and** you can reuse them).
+```sh
+terraform destroy -auto-approve
+```
 Happy IoTying!
