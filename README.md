@@ -75,11 +75,18 @@ terraform apply -auto-approve
 You created a resource group, IoT Hub, DPS instance, and mapped the IoT Hub to your DPS instance. To make things simpler, terraform also [uploaded and verified your generated root certificate automatically](https://learn.microsoft.com/en-us/azure/iot-dps/how-to-verify-certificates#automatic-verification-of-intermediate-or-root-ca-through-self-attestation).
 
 ### Creating an Enrollment Group
-Because Enrollment Groups are part of an IoT Hub DPS extension and not the main ARM APIs, we need to create the enrollment group using az cli instead of terraform (sadness). There are terraform workarounds, but I don't like them. Here's the command that you need to run for the enrollment group creation:
+Because Enrollment Groups are part of an IoT Hub DPS extension and not the main ARM APIs, we need to create the enrollment group using az cli instead of terraform (sadness). There are terraform workarounds, but I don't like them. Below is the command that you need to run for the enrollment group creation.
+
 ```sh
-# The command looks something like the commented one below, but we will grab resource_group_name and dps_name from Terraform, so terraform will give us the command ready to execute as one of its outputs.
-# az iot dps enrollment-group create -g {resource_group_name} --dps-name {dps_name} --enrollment-id x509-test-devices --certificate-path "./certificates/certs/azure-iot-test-only.intermediate.cert.pem"
 $(terraform output -raw enrollment_group_create_command)
+```
+
+**NOTE**: The command looks something like the one below, but terraform does the work of filling in the `resource_group_name` and `dps_name` variables for you.
+```sh
+az iot dps enrollment-group create -g {resource_group_name} \
+    --dps-name {dps_name} \
+    --enrollment-id x509-test-devices \
+    --certificate-path "./certificates/certs/azure-iot-test-only.intermediate.cert.pem"
 ```
 
 ## Provisioning and Testing Devices
@@ -127,12 +134,12 @@ curl -L -i -X PUT --cert certificates/certs/$registration_id-full-chain.cert.pem
             -d "{'registrationId': '$registration_id'}" \
             https://$PROVISIONING_HOST/$PROVISIONING_IDSCOPE/registrations/$registration_id/register?api-version=2021-06-01
 
-# Check the operation status now (you need to replace the ID below with yours from the call above)
+# Check the operation status now (you need to replace the $OPERATION_ID below with yours from the call above)
 curl -L -i -X GET --cert certificates/certs/$registration_id-full-chain.cert.pem \
             --key certificates/private/$registration_id.key.pem \
             -H 'Content-Type: application/json' \
             -H 'Content-Encoding:  utf-8' \
-            https://$PROVISIONING_HOST/$PROVISIONING_IDSCOPE/registrations/$registration_id/operations/[operation_id]?api-version=2021-06-01
+            https://$PROVISIONING_HOST/$PROVISIONING_IDSCOPE/registrations/$registration_id/operations/$OPERATION_ID?api-version=2021-06-01
 
 ```
 ### Provision a Device Using MQTT
