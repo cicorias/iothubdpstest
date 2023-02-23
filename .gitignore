@@ -34,3 +34,18 @@ certificates/**
 !certificates/certGen.sh
 !certificates/openssl_device_intermediate_ca.cnf
 !certificates/openssl_root_ca.cnf
+my.tfvars
+
+
+#python
+.env/
+.venv/
+env/
+venv/
+
+
+# dotenv
+.env
+
+# need the baltimore cert 
+!certificates/BaltimoreCyberTrustRoot.crt.pem
